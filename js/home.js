@@ -1,3 +1,4 @@
+let map = null;
 const zoomLevel = 12;
 const numDeltas = 100;
 const delay = 10; //milliseconds
@@ -19,14 +20,19 @@ initApp = () => {
         userReference.once('value').then((data) => {
           const group = data.val();
           const membersReference = database.ref(`group/${group}/members`);
-          membersReference.once('value', (members) => {
-            const bounds = new google.maps.LatLngBounds();
-            const infoWindow = new google.maps.InfoWindow();
-            const map = initMap();
-            const directionsService = new google.maps.DirectionsService();
+          const bounds = new google.maps.LatLngBounds();
+          const directionsService = new google.maps.DirectionsService();
+          const infoWindow = new google.maps.InfoWindow();
+          membersReference.on('value', (members) => {
+            // not sure why initMap has to be here
+            if (map === null) {
+              map = initMap();
+            }
             members = members.val();
             // loop through members
             Object.keys(members).forEach((userId) => {
+              if (markers.hasOwnProperty(userId)) return;
+
               const directionsDisplay = new google.maps.DirectionsRenderer({
                 map: map,
                 preserveViewport: true,
@@ -57,7 +63,9 @@ initApp = () => {
                 const newCoordinate = snapshot.val();
                 const marker = markers[user];
                 // todo: create marker if doesn't exist?
-                if (!marker) return;
+                if (!marker) {
+                  marker = createMarker(newCoordinate, map, infoWindow, directionsDisplay);
+                }
                 
                 marker.addCoordinate(newCoordinate);
                 if (!marker.isInRoute) {
@@ -113,6 +121,9 @@ createMarker = (coordinate, map, infoWindow, directionsDisplay) => {
     }
 
     addCoordinate(coordinate) {
+      if (!this.hasOwnProperty('coordinates')) {
+        this.coordinates = [];
+      }
       this.coordinates.push(coordinate);
     }
 
